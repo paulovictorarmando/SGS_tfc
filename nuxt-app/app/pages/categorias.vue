@@ -84,14 +84,25 @@ definePageMeta({
   middleware: 'auth',
 });
 
-const categorias = ref([]);
+interface Categoria {
+  id: number;
+  nome: string;
+  descricao: string;
+}
+
+interface CategoriaForm {
+  nome: string;
+  descricao: string;
+}
+
+const categorias = ref<Categoria[]>([]);
 const loading = ref(false);
 const salvando = ref(false);
 const modalAberto = ref(false);
-const categoriaEditando = ref(null);
+const categoriaEditando = ref<Categoria | null>(null);
 const erro = ref('');
 
-const form = ref({
+const form = ref<CategoriaForm>({
   nome: "",
   descricao: "",
 });
@@ -113,7 +124,7 @@ const carregarCategorias = async () => {
   }
 };
 
-const abrirModal = (categoria: any = null) => {
+const abrirModal = (categoria: Categoria | null = null) => {
   if (categoria) {
     categoriaEditando.value = categoria;
     form.value = {

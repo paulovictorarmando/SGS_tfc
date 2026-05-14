@@ -2,7 +2,7 @@ export default defineNuxtRouteMiddleware((to) => {
   const publicPages = ["/login"];
 
   // Só executa no client
-  if (process.server) return;
+  if (import.meta.server) return;
 
   const accessToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
 

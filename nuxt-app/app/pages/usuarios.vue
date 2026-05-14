@@ -59,7 +59,7 @@
               v-model="form.username"
               type="text"
               required
-              :disabled="usuarioEditando"
+              :disabled="Boolean(usuarioEditando)"
             />
           </div>
 
@@ -122,14 +122,32 @@ definePageMeta({
   middleware: 'auth',
 });
 
-const usuarios = ref([]);
+interface Usuario {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_staff: boolean;
+}
+
+interface UsuarioForm {
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  password?: string;
+  is_staff: boolean;
+}
+
+const usuarios = ref<Usuario[]>([]);
 const loading = ref(false);
 const salvando = ref(false);
 const modalAberto = ref(false);
-const usuarioEditando = ref(null);
+const usuarioEditando = ref<Usuario | null>(null);
 const erro = ref('');
 
-const form = ref({
+const form = ref<UsuarioForm>({
   username: "",
   email: "",
   first_name: "",
@@ -155,7 +173,7 @@ const carregarUsuarios = async () => {
   }
 };
 
-const abrirModal = (usuario: any = null) => {
+const abrirModal = (usuario: Usuario | null = null) => {
   if (usuario) {
     usuarioEditando.value = usuario;
     form.value = {
@@ -189,7 +207,7 @@ const salvarUsuario = async () => {
   salvando.value = true;
   erro.value = '';
   try {
-    const dados = { ...form.value };
+    const dados: UsuarioForm = { ...form.value };
 
     if (usuarioEditando.value && !dados.password) {
       delete dados.password;

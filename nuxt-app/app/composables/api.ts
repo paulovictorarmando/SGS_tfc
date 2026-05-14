@@ -12,7 +12,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  if (process.server) return config;
+  if (import.meta.server) return config;
 
   const token = getAccessToken();
 
@@ -42,18 +42,21 @@ api.interceptors.response.use(
           );
 
           setTokens(response.data.access, refreshToken);
+          if (!originalRequest.headers) {
+            originalRequest.headers = {};
+          }
           originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
 
           return api(originalRequest);
         } catch {
           clearTokens();
-          if (process.client) {
+          if (import.meta.client) {
             window.location.href = "/login";
           }
         }
       } else {
         clearTokens();
-        if (process.client) {
+        if (import.meta.client) {
           window.location.href = "/login";
         }
       }

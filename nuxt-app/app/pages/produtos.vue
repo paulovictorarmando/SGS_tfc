@@ -105,15 +105,36 @@ definePageMeta({
   middleware: 'auth',
 });
 
-const produtos = ref([]);
-const categorias = ref([]);
+interface Produto {
+  id: number;
+  nome: string;
+  descricao: string;
+  preco: string | number;
+  categoria: number;
+  categoria_nome?: string;
+}
+
+interface Categoria {
+  id: number;
+  nome: string;
+}
+
+interface ProdutoForm {
+  nome: string;
+  categoria: string;
+  preco: string;
+  descricao: string;
+}
+
+const produtos = ref<Produto[]>([]);
+const categorias = ref<Categoria[]>([]);
 const loading = ref(false);
 const salvando = ref(false);
 const modalAberto = ref(false);
-const produtoEditando = ref(null);
+const produtoEditando = ref<Produto | null>(null);
 const erro = ref('');
 
-const form = ref({
+const form = ref<ProdutoForm>({
   nome: "",
   categoria: "",
   preco: "",
@@ -151,13 +172,13 @@ const carregarDados = async () => {
   }
 };
 
-const abrirModal = (produto: any = null) => {
+const abrirModal = (produto: Produto | null = null) => {
   if (produto) {
     produtoEditando.value = produto;
     form.value = {
       nome: produto.nome,
-      categoria: produto.categoria,
-      preco: produto.preco,
+      categoria: String(produto.categoria),
+      preco: String(produto.preco),
       descricao: produto.descricao || "",
     };
   } else {
