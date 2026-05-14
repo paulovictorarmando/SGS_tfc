@@ -9,3 +9,6 @@ add_admin:
 	DJANGO_SUPERUSER_EMAIL=admin@gmail.com \
 	DJANGO_SUPERUSER_PASSWORD=admin \
 	python manage.py createsuperuser --noinput
+
+venv:
+	source venv/bin/activate

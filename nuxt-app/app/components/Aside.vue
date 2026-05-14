@@ -5,7 +5,7 @@
     </li>
     <div class="divider my-2"></div>
     <li>
-      <NuxtLink to="/vendas">💰 Vendas</NuxtLink>
+      <NuxtLink to="/movimentos">💰 Movimentos</NuxtLink>
     </li>
     <li>
       <NuxtLink to="/produtos">📦 Produtos</NuxtLink>

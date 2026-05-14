@@ -9,20 +9,36 @@ class CategoriaSerializer(serializers.ModelSerializer):
 class ProdutoSerializer(serializers.ModelSerializer):
     categoria = CategoriaSerializer(read_only=True)
 
+    categoria_id = serializers.PrimaryKeyRelatedField(
+        queryset=Categoria.objects.all(),
+        source='categoria',
+        write_only=True
+    )
+    quantidade = serializers.IntegerField(min_value=0, default=0)
+
     class Meta:
         model = Produto
-        fields = '__all__'
+        fields = fields = [
+            'id',
+            'nome',
+            'preco',
+            'quantidade',
+            'categoria',
+            'categoria_id',
+        ]
 
 class ItemMovimentacaoSerializer(serializers.ModelSerializer):
-    produto = ProdutoSerializer(read_only=True)
+    produto = serializers.PrimaryKeyRelatedField(
+        queryset=Produto.objects.all()
+    )
 
     class Meta:
         model = ItemMovimentacao
         fields = '__all__'
 
 class MovimentacaoSerializer(serializers.ModelSerializer):
-    itens = ItemMovimentacaoSerializer(read_only=True, many=True)
-    tipo_movimentacao = serializers.CharField(source='get_tipo_movimentacao_display')
+    itens = ItemMovimentacaoSerializer(many=True, required=True)
+    tipo_movimentacao = serializers.CharField(source='get_tipo_movimentacao_display', required=True)
     class Meta:
         model = Movimentacao
         fields = '__all__'

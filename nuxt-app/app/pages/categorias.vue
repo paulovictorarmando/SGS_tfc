@@ -43,13 +43,16 @@
     </div>
 
     <!-- Modal -->
-    <div v-if="modalAberto" class="modal-overlay" @click.self="fecharModal()">
-      <div class="modal">
+    <div v-if="modalAberto" class="modal-overlay-container">
+      <div class="modal-backdrop" @click="fecharModal()"></div>
+      <div class="modal-dialog">
         <div class="modal-header">
           <h2>
             {{ categoriaEditando ? "Editar Categoria" : "Nova Categoria" }}
           </h2>
-          <button @click="fecharModal()" class="btn-fechar">✕</button>
+          <button type="button" @click="fecharModal()" class="btn-fechar">
+            ✕
+          </button>
         </div>
 
         <form @submit.prevent="salvarCategoria" class="formulario">
@@ -81,7 +84,7 @@
 import api from "~/composables/api";
 
 definePageMeta({
-  middleware: 'auth',
+  middleware: "auth",
 });
 
 const categorias = ref([]);
@@ -89,7 +92,7 @@ const loading = ref(false);
 const salvando = ref(false);
 const modalAberto = ref(false);
 const categoriaEditando = ref(null);
-const erro = ref('');
+const erro = ref("");
 
 const form = ref({
   nome: "",
@@ -98,15 +101,17 @@ const form = ref({
 
 const carregarCategorias = async () => {
   loading.value = true;
-  erro.value = '';
+  erro.value = "";
   try {
-    const response = await api.get("/categorias/").catch(err => {
-      console.error('Erro ao carregar categorias:', err);
+    const response = await api.get("/categorias/").catch((err) => {
+      console.error("Erro ao carregar categorias:", err);
       return { data: [] };
     });
-    categorias.value = Array.isArray(response.data) ? response.data : response.data.results || [];
+    categorias.value = Array.isArray(response.data)
+      ? response.data
+      : response.data.results || [];
   } catch (error: any) {
-    console.error('Erro geral:', error);
+    console.error("Erro geral:", error);
     erro.value = "Erro ao carregar categorias";
   } finally {
     loading.value = false;
@@ -137,7 +142,7 @@ const fecharModal = () => {
 
 const salvarCategoria = async () => {
   salvando.value = true;
-  erro.value = '';
+  erro.value = "";
   try {
     if (categoriaEditando.value) {
       await api.put(`/categorias/${categoriaEditando.value.id}/`, form.value);
@@ -219,14 +224,12 @@ onMounted(() => {
 .tabela {
   width: 100%;
   border-collapse: collapse;
-  background: white;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
 }
 
 .tabela thead {
-  background: #f3f4f6;
+  background: #1f2937;
+  color: white;
 }
 
 .tabela th,
@@ -234,10 +237,6 @@ onMounted(() => {
   padding: 1rem;
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
-}
-
-.tabela tbody tr:hover {
-  background: #f9fafb;
 }
 
 .acoes {
@@ -292,6 +291,41 @@ onMounted(() => {
   z-index: 1000;
 }
 
+.modal-overlay-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+}
+
+.modal-dialog {
+  position: relative;
+  z-index: 9999;
+  background: white;
+  border-radius: 0.5rem;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
 .modal {
   background: white;
   border-radius: 0.5rem;
@@ -306,6 +340,10 @@ onMounted(() => {
   align-items: center;
   padding: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
 }
 
 .modal-header h2 {
@@ -323,6 +361,7 @@ onMounted(() => {
 
 .formulario {
   padding: 1.5rem;
+  color: #000;
 }
 
 .form-group {

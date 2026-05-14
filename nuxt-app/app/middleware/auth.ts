@@ -4,7 +4,8 @@ export default defineNuxtRouteMiddleware((to) => {
   // Só executa no client
   if (process.server) return;
 
-  const accessToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const accessToken =
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   // Se não tem token e tenta acessar página privada
   if (!accessToken && !publicPages.includes(to.path)) {
