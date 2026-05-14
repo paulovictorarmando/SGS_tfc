@@ -29,7 +29,7 @@ class MovimentacaoSerializer(serializers.ModelSerializer):
     def validate_tipo_movimentacao(self, value):
         if value not in ['venda', 'perda', 'entrada', 'ajuste']:
             raise serializers.ValidationError("Tipo de movimentação inválido.")
-        if value == 'venda'and not self.initial_data.get('itens'):
+        if value == 'venda' and not self.initial_data.get('itens'):
             raise serializers.ValidationError("Movimentação deve conter itens.")
         if value != 'venda' and self.context.get('request').user.is_authenticated and not self.context.get('request').user.is_staff:
             raise serializers.ValidationError("Apenas administradores podem criar movimentações de perda, entrada ou ajuste.")
