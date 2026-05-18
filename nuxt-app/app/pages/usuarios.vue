@@ -62,7 +62,7 @@
               v-model="form.username"
               type="text"
               required
-              :disabled="usuarioEditando"
+              :disabled="isEditing"
             />
           </div>
 
@@ -94,9 +94,9 @@
             <input
               v-model="form.password"
               type="password"
-              :required="!usuarioEditando"
+              :required="!isEditing"
             />
-            <small v-if="usuarioEditando"
+            <small v-if="isEditing"
               >Deixe em branco para manter a senha atual</small
             >
           </div>
@@ -129,14 +129,33 @@ definePageMeta({
   middleware: "auth",
 });
 
-const usuarios = ref([]);
+interface Usuario {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_staff: boolean;
+  telefone: string;
+}
+
+const usuarios = ref<Usuario[]>([]);
 const loading = ref(false);
 const salvando = ref(false);
 const modalAberto = ref(false);
-const usuarioEditando = ref(null);
+const usuarioEditando = ref<Usuario | null>(null);
 const erro = ref("");
 
-const form = ref({
+interface form {
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  password?: string;
+  is_staff: boolean;
+  telefone: string;
+}
+const form = ref<form>({
   username: "",
   email: "",
   first_name: "",
@@ -145,6 +164,8 @@ const form = ref({
   is_staff: false,
   telefone: "",
 });
+
+const isEditing = computed(() => usuarioEditando.value !== null);
 
 const carregarUsuarios = async () => {
   loading.value = true;
@@ -165,7 +186,7 @@ const carregarUsuarios = async () => {
   }
 };
 
-const abrirModal = (usuario: any = null) => {
+const abrirModal = (usuario: Usuario | null = null) => {
   if (usuario) {
     usuarioEditando.value = usuario;
     form.value = {
@@ -202,7 +223,7 @@ const salvarUsuario = async () => {
   erro.value = "";
   try {
     const dados = { ...form.value };
-
+    console.log("Criando usuário com dados:", dados);
     if (usuarioEditando.value && !dados.password) {
       delete dados.password;
     }
@@ -210,6 +231,7 @@ const salvarUsuario = async () => {
     if (usuarioEditando.value) {
       await api.put(`/usuarios/${usuarioEditando.value.id}/`, dados);
     } else {
+      console.log("Criando usuário com dados:", dados);
       await api.post("/usuarios/", dados);
     }
 
@@ -450,7 +472,7 @@ onMounted(() => {
 
 .formulario {
   padding: 1.5rem;
-  color:black;
+  color: black;
 }
 
 .form-group {

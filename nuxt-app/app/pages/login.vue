@@ -4,6 +4,7 @@ import { setTokens } from "~/composables/auth";
 
 definePageMeta({
   layout: "auth",
+  middleware: "auth",
 });
 
 const username = ref("");
@@ -34,7 +35,7 @@ const handleLogin = async () => {
     setTokens(response.data.access, response.data.refresh);
 
     // Aguarda um pouco para garantir que o token foi salvo
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     await navigateTo("/home");
   } catch (error: any) {

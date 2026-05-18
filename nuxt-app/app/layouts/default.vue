@@ -1,6 +1,8 @@
 <template>
-  <div class="flex flex-col min-h-screen">
-    <Header />
+  <div class="flex flex-col h-screen">
+    <header class="sticky top-0 z-50">
+      <Header />
+    </header>
 
     <div class="flex flex-1 overflow-hidden">
       <aside

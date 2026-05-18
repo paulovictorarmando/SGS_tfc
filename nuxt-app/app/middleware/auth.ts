@@ -2,18 +2,20 @@ export default defineNuxtRouteMiddleware((to) => {
   const publicPages = ["/login"];
 
   // Só executa no client
-  if (process.server) return;
+  if (import.meta.server) return;
+  //if (process.server) return;
+  if (import.meta.client) {
+    const accessToken =
+      typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
-  const accessToken =
-    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    // Se não tem token e tenta acessar página privada
+    if (!accessToken && !publicPages.includes(to.path)) {
+      return navigateTo("/login");
+    }
 
-  // Se não tem token e tenta acessar página privada
-  if (!accessToken && !publicPages.includes(to.path)) {
-    return navigateTo("/login");
-  }
-
-  // Se tem token e tenta acessar login, vai para home
-  if (accessToken && to.path === "/login") {
-    return navigateTo("/home");
+    // Se tem token e tenta acessar login, vai para home
+    if (accessToken && to.path === "/login") {
+      return navigateTo("/home");
+    }
   }
 });
