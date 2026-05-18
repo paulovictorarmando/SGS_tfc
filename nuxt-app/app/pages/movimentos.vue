@@ -2,9 +2,14 @@
   <div class="movimentacoes-container">
     <div class="header">
       <h1>📦 Movimentações</h1>
-      <button @click="abrirModal()" class="btn-primary">
-        + Nova Movimentação
-      </button>
+      <div class="header-buttons">
+        <button @click="imprimirRelatorio()" class="btn-secondary">
+          🖨️ Imprimir Relatório
+        </button>
+        <button @click="abrirModal()" class="btn-primary">
+          + Nova Movimentação
+        </button>
+      </div>
     </div>
 
     <div v-if="erro" class="alert-error">{{ erro }}</div>
@@ -15,34 +20,35 @@
       <thead>
         <tr>
           <th>Tipo</th>
-          <th>Descrição</th>
           <th>Data</th>
+          <th>Autor</th>
+          <th>Itens</th>
+          <th>Total</th>
           <th>Ações</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="mov in movimentacoes" :key="mov.id">
-          <td>
-            <span
-              :class="[
-                'badge',
-                mov.tipo === 'entrada' ? 'badge-entrada' : 'badge-saida',
-              ]"
-            >
-              {{ mov.tipo === "entrada" ? "📥" : "📤" }} {{ mov.tipo }}
-            </span>
-          </td>
-          <td>{{ mov.descricao }}</td>
-          <td>{{ formatarData(mov.data) }}</td>
+          <td>{{ mov.tipo_movimentacao }}</td>
+          <td>{{ formatarData(mov.data_movimentacao) }}</td>
+          <td>{{ mov.autor_nome || mov.autor }}</td>
+          <td>{{ calcularQuantidadeItens(mov) }}</td>
+          <td>{{ formatarPreco(calcularTotalMovimentacao(mov)) }}</td>
           <td class="acoes">
-            <button @click="abrirModal(mov)" class="btn-small btn-edit">
-              Editar
+            <button @click="abrirModalDetalhes(mov)" class="btn-small btn-view">
+              Ver
+            </button>
+            <button
+              @click="imprimirMovimentacao(mov)"
+              class="btn-small btn-print"
+            >
+              🖨️ Imprimir
             </button>
             <button
               @click="deletarMovimentacao(mov.id)"
               class="btn-small btn-delete"
             >
-              Deletar
+              ✕ Deletar
             </button>
           </td>
         </tr>
@@ -69,40 +75,31 @@
         <form @submit.prevent="salvarMovimentacao" class="formulario">
           <div class="form-group">
             <label>Tipo *</label>
-            <select v-model="form.tipo" required>
-              <option value="entrada">📥 Entrada</option>
-              <option value="saida">📤 Saída</option>
+            <select
+              v-model="form.tipo_movimentacao"
+              required
+              :disabled="!!movEditando"
+            >
+              <option value="entrada">Entrada</option>
+              <option value="venda">Venda</option>
+              <option value="perda">Perda</option>
             </select>
-          </div>
-
-          <div class="form-group">
-            <label>Data *</label>
-            <input v-model="form.data" type="date" required />
-          </div>
-
-          <div class="form-group">
-            <label>Descrição</label>
-            <textarea v-model="form.descricao" class="textarea"></textarea>
           </div>
 
           <div class="form-section">
             <h3>Itens da Movimentação</h3>
 
-            <div class="form-group">
+            <div v-if="!movEditando" class="form-group">
               <label>Produto *</label>
-              <select v-model="itemForm.produto">
+              <select v-model="itemForm">
                 <option value="">Selecione um produto</option>
-                <option
-                  v-for="prod in produtos"
-                  :key="prod.id"
-                  :value="prod.id"
-                >
+                <option v-for="prod in produtos" :key="prod.id" :value="prod">
                   {{ prod.nome }}
                 </option>
               </select>
             </div>
 
-            <div class="form-row">
+            <div v-if="!movEditando" class="form-row">
               <div class="form-group">
                 <label>Quantidade *</label>
                 <input
@@ -115,18 +112,28 @@
 
               <div class="form-group">
                 <label>Preço Unitário *</label>
-                <input
-                  v-model="itemForm.preco_unitario"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                />
+                <label>{{
+                  formatarPreco(
+                    itemForm.id
+                      ? getPrecoAtual(
+                          produtos.find(
+                            (p: Produto) => p.id === itemForm.id,
+                          ) || {
+                            id: 0,
+                            nome: "",
+                            preco_compra: 0,
+                            preco_venda: 0,
+                          },
+                        )
+                      : 0,
+                  )
+                }}</label>
               </div>
 
               <div class="form-group">
                 <button
                   type="button"
-                  @click="adicionarItem"
+                  @click="adicionarItem(itemForm)"
                   class="btn-secondary"
                 >
                   Adicionar
@@ -142,23 +149,23 @@
                     <th>Quantidade</th>
                     <th>Preço Unit.</th>
                     <th>Total</th>
-                    <th>Ação</th>
+                    <th v-if="!movEditando">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(item, idx) in itens" :key="idx">
                     <td>
                       {{
-                        produtos.find((p: Produto) => p.id === item.produto)
-                          ?.nome || "N/A"
+                        produtos.find((p: Produto) => p.id === item.id)?.nome ||
+                        "N/A"
                       }}
                     </td>
                     <td>{{ item.quantidade }}</td>
-                    <td>{{ formatarPreco(item.preco_unitario) }}</td>
+                    <td>{{ item.preco }}</td>
                     <td>
-                      {{ formatarPreco(item.quantidade * item.preco_unitario) }}
+                      {{ formatarPreco(item.quantidade * item.preco) }}
                     </td>
-                    <td>
+                    <td v-if="!movEditando">
                       <button
                         type="button"
                         @click="removerItem(idx)"
@@ -175,15 +182,23 @@
 
           <div class="modal-footer">
             <button type="button" @click="fecharModal()" class="btn-secondary">
-              Cancelar
+              {{ movEditando ? "Fechar" : "Cancelar" }}
             </button>
-            <button type="submit" class="btn-primary" :disabled="salvando">
+            <button
+              v-if="!movEditando"
+              type="submit"
+              class="btn-primary"
+              :disabled="salvando"
+            >
               {{ salvando ? "Salvando..." : "Salvar" }}
             </button>
           </div>
         </form>
       </div>
     </div>
+
+    <!-- Div para imprimir (oculta) -->
+    <div id="conteudo-impressao" style="display: none"></div>
   </div>
 </template>
 
@@ -196,20 +211,28 @@ definePageMeta({
 
 interface Movimentacao {
   id: number;
-  tipo: string;
-  descricao: string;
-  data: string;
+  autor: number;
+  autor_nome?: string;
+  tipo_movimentacao: string;
+  data_movimentacao: string;
+  itens: {
+    produto: number;
+    quantidade: number;
+  }[];
 }
 
 interface Produto {
   id: number;
   nome: string;
+  preco_compra: number;
+  preco_venda: number;
 }
 
 interface Item {
-  produto: number;
+  id: number;
+  nome: string;
   quantidade: number;
-  preco_unitario: number;
+  preco: number;
 }
 
 const movimentacoes = ref<Movimentacao[]>([]);
@@ -222,26 +245,66 @@ const movEditando = ref<Movimentacao | null>(null);
 const erro = ref("");
 
 const form = ref({
-  tipo: "entrada",
-  descricao: "",
-  data: new Date().toISOString().split("T")[0],
+  tipo_movimentacao: "entrada",
 });
 
 const itemForm = ref({
-  produto: "" as any,
+  id: "" as any,
+  nome: "" as any,
   quantidade: "" as any,
-  preco_unitario: "" as any,
+  preco: "" as any,
 });
 
-const formatarData = (data: string) => {
-  return new Date(data).toLocaleDateString("pt-BR");
+const formatarData = (data: string | undefined) => {
+  if (!data) return "-";
+  return new Date(data).toLocaleDateString("pt-BR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 const formatarPreco = (preco: string | number) => {
-  return new Intl.NumberFormat("pt-BR", {
+  return new Intl.NumberFormat("AOA", {
     style: "currency",
-    currency: "BRL",
+    currency: "AOA",
   }).format(Number(preco));
+};
+
+const getPrecoAtual = (produto: Produto): number => {
+  const tipoMovimentacao = form.value.tipo_movimentacao;
+  if (tipoMovimentacao === "venda") {
+    return produto.preco_venda;
+  } else if (tipoMovimentacao === "entrada" || tipoMovimentacao === "perda") {
+    return produto.preco_compra;
+  }
+  return 0;
+};
+
+const calcularQuantidadeItens = (mov: Movimentacao): number => {
+  if (!mov.itens) return 0;
+  return mov.itens.reduce((total, item) => total + item.quantidade, 0);
+};
+
+const calcularTotalMovimentacao = (mov: Movimentacao): number => {
+  if (!mov.itens) return 0;
+  return mov.itens.reduce((total, item) => {
+    const produto = produtos.value.find((p) => p.id === item.produto);
+    let preco = 0;
+    if (produto) {
+      if (mov.tipo_movimentacao === "venda") {
+        preco = produto.preco_venda;
+      } else if (
+        mov.tipo_movimentacao === "entrada" ||
+        mov.tipo_movimentacao === "perda"
+      ) {
+        preco = produto.preco_compra;
+      }
+    }
+    return total + item.quantidade * preco;
+  }, 0);
 };
 
 const carregarDados = async () => {
@@ -262,6 +325,7 @@ const carregarDados = async () => {
     movimentacoes.value = Array.isArray(movRes.data)
       ? movRes.data
       : movRes.data.results || [];
+    console.log("Movimentações carregadas:", movimentacoes.value);
     produtos.value = Array.isArray(prodRes.data)
       ? prodRes.data
       : prodRes.data.results || [];
@@ -277,23 +341,20 @@ const abrirModal = (mov: Movimentacao | null = null) => {
   if (mov) {
     movEditando.value = mov;
     form.value = {
-      tipo: mov.tipo,
-      descricao: mov.descricao,
-      data: mov.data,
+      tipo_movimentacao: mov.tipo_movimentacao,
     };
   } else {
     movEditando.value = null;
     form.value = {
-      tipo: "entrada",
-      descricao: "",
-      data: new Date().toISOString().split("T")[0],
+      tipo_movimentacao: "entrada",
     };
   }
   itens.value = [];
   itemForm.value = {
-    produto: "",
+    id: "",
+    nome: "",
     quantidade: "",
-    preco_unitario: "",
+    preco: "",
   };
   modalAberto.value = true;
 };
@@ -303,18 +364,47 @@ const fecharModal = () => {
   movEditando.value = null;
 };
 
-const adicionarItem = () => {
-  if (
-    itemForm.value.produto &&
-    itemForm.value.quantidade &&
-    itemForm.value.preco_unitario
-  ) {
-    itens.value.push({
-      produto: parseInt(itemForm.value.produto),
-      quantidade: parseFloat(itemForm.value.quantidade),
-      preco_unitario: parseFloat(itemForm.value.preco_unitario),
+const abrirModalDetalhes = (mov: Movimentacao) => {
+  movEditando.value = mov;
+  if (mov.itens && mov.itens.length > 0) {
+    itens.value = mov.itens.map((item) => {
+      const produto = produtos.value.find((p) => p.id === item.produto);
+      let preco = 0;
+      if (produto) {
+        if (mov.tipo_movimentacao === "venda") {
+          preco = produto.preco_venda;
+        } else if (
+          mov.tipo_movimentacao === "entrada" ||
+          mov.tipo_movimentacao === "perda"
+        ) {
+          preco = produto.preco_compra;
+        }
+      }
+      return {
+        id: item.produto,
+        nome: produto?.nome || "N/A",
+        quantidade: item.quantidade,
+        preco: preco,
+      };
     });
-    itemForm.value = { produto: "", quantidade: "", preco_unitario: "" };
+  }
+  form.value = {
+    tipo_movimentacao: mov.tipo_movimentacao,
+  };
+  modalAberto.value = true;
+};
+
+const adicionarItem = (form: any) => {
+  if (form.id && form.nome && form.quantidade) {
+    const produto = produtos.value.find((p) => p.id === form.id);
+    const preco = produto ? getPrecoAtual(produto) : 0;
+    itens.value.push({
+      id: parseInt(form.id),
+      nome: form.nome,
+      quantidade: parseInt(form.quantidade),
+      preco: preco,
+    });
+    itemForm.value = { id: "", nome: "", quantidade: "", preco: "" };
   }
 };
 
@@ -331,23 +421,28 @@ const salvarMovimentacao = async () => {
   salvando.value = true;
   erro.value = "";
   try {
-    if (movEditando.value) {
-      await api.put(`/movimentacoes/${movEditando.value.id}/`, form.value);
-    } else {
-      const mov = await api.post("/movimentacoes/", form.value);
-
-      for (const item of itens.value) {
-        await api.post("/itens-movimentacao/", {
-          movimentacao: mov.data.id,
-          ...item,
-        });
-      }
-    }
+    console.log("form.value:", form.value);
+    console.log("form.value.tipo_movimentacao:", form.value.tipo_movimentacao);
+    const payload = {
+      tipo_movimentacao: form.value.tipo_movimentacao,
+      itens: itens.value.map((item) => ({
+        produto: item.id,
+        quantidade: item.quantidade,
+      })),
+    };
+    console.log("Payload completo enviado:", JSON.stringify(payload, null, 2));
+    await api.post("/movimentacoes/", payload);
 
     fecharModal();
     await carregarDados();
   } catch (error: any) {
-    erro.value = error.response?.data?.detail || "Erro ao salvar movimentação";
+    console.error("Erro completo:", error);
+    console.error("Response data:", error.response?.data);
+    console.error("Response data estoque:", error.response?.data?.estoque);
+    erro.value =
+      error.response?.data?.detail ||
+      JSON.stringify(error.response?.data) ||
+      "Erro ao salvar movimentação";
   } finally {
     salvando.value = false;
   }
@@ -361,6 +456,258 @@ const deletarMovimentacao = async (id: number) => {
     await carregarDados();
   } catch (error: any) {
     erro.value = "Erro ao deletar movimentação";
+  }
+};
+
+const imprimirMovimentacao = (mov: Movimentacao) => {
+  const conteudoImpressao = document.getElementById("conteudo-impressao");
+  if (!conteudoImpressao) return;
+
+  let conteudo = `
+    <html>
+      <head>
+        <title>Movimentação #${mov.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          h1 { color: #333; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+          th { background-color: #1f2937; color: white; }
+          .info { margin: 20px 0; }
+          .total { font-weight: bold; font-size: 1.2em; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <h1>Movimentação #${mov.id}</h1>
+        <div class="info">
+          <p><strong>Tipo:</strong> ${mov.tipo_movimentacao}</p>
+          <p><strong>Data:</strong> ${formatarData(mov.data_movimentacao)}</p>
+          <p><strong>Autor:</strong> ${mov.autor_nome || mov.autor}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Quantidade</th>
+              <th>Preço Unitário</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${mov.itens
+              .map((item) => {
+                const produto = produtos.value.find(
+                  (p) => p.id === item.produto,
+                );
+                let preco = 0;
+                if (produto) {
+                  if (mov.tipo_movimentacao === "venda") {
+                    preco = produto.preco_venda || 0;
+                  } else if (
+                    mov.tipo_movimentacao === "entrada" ||
+                    mov.tipo_movimentacao === "perda"
+                  ) {
+                    preco = produto.preco_compra || 0;
+                  }
+                }
+                preco = Number(preco) || 0;
+                const total = item.quantidade * preco;
+                return `
+              <tr>
+                <td>${produto?.nome || "N/A"}</td>
+                <td>${item.quantidade}</td>
+                <td>Kz ${preco.toFixed(2)}</td>
+                <td>Kz ${total.toFixed(2)}</td>
+              </tr>
+            `;
+              })
+              .join("")}
+          </tbody>
+        </table>
+        <div class="total">
+          <p>Total: Kz ${calcularTotalMovimentacao(mov).toFixed(2)}</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  conteudoImpressao.innerHTML = conteudo;
+  const janelaImpressao = window.open("", "", "height=600,width=800");
+  if (janelaImpressao) {
+    janelaImpressao.document.write(conteudo);
+    janelaImpressao.document.close();
+    janelaImpressao.print();
+  }
+};
+
+const imprimirRelatorio = () => {
+  const movPorTipo = {
+    entrada: movimentacoes.value.filter(
+      (m) => m.tipo_movimentacao === "entrada",
+    ),
+    venda: movimentacoes.value.filter((m) => m.tipo_movimentacao === "venda"),
+    perda: movimentacoes.value.filter((m) => m.tipo_movimentacao === "perda"),
+  };
+
+  const totalPorTipo = {
+    entrada: movPorTipo.entrada.reduce(
+      (total, mov) => total + calcularTotalMovimentacao(mov),
+      0,
+    ),
+    venda: movPorTipo.venda.reduce(
+      (total, mov) => total + calcularTotalMovimentacao(mov),
+      0,
+    ),
+    perda: movPorTipo.perda.reduce(
+      (total, mov) => total + calcularTotalMovimentacao(mov),
+      0,
+    ),
+  };
+
+  let conteudo = `
+    <html>
+      <head>
+        <title>Relatório de Movimentações</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          h1 { color: #333; }
+          h2 { color: #555; margin-top: 30px; border-bottom: 2px solid #1f2937; padding-bottom: 10px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+          th { background-color: #1f2937; color: white; }
+          .resumo { margin: 20px 0; padding: 10px; background-color: #f0f0f0; border-radius: 5px; }
+          .subtotal { background-color: #e8f4f8; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <h1>Relatório Geral de Movimentações</h1>
+        <div class="resumo">
+          <p><strong>Data do Relatório:</strong> ${new Date().toLocaleDateString("pt-BR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</p>
+          <p><strong>Total de Movimentações:</strong> ${movimentacoes.value.length}</p>
+        </div>
+
+        ${
+          movPorTipo.entrada.length > 0
+            ? `
+          <h2>📥 Movimentações de Entrada</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Data</th>
+                <th>Autor</th>
+                <th>Quantidade de Itens</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${movPorTipo.entrada
+                .map(
+                  (mov) => `
+              <tr>
+                <td>${mov.id}</td>
+                <td>${formatarData(mov.data_movimentacao)}</td>
+                <td>${mov.autor_nome || mov.autor}</td>
+                <td>${calcularQuantidadeItens(mov)}</td>
+                <td>Kz ${calcularTotalMovimentacao(mov).toFixed(2)}</td>
+              </tr>
+            `,
+                )
+                .join("")}
+              <tr class="subtotal">
+                <td colspan="4">Valor investido:</td>
+                <td>Kz ${totalPorTipo.entrada.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        `
+            : ""
+        }
+
+        ${
+          movPorTipo.venda.length > 0
+            ? `
+          <h2>🛍️ Movimentações de Venda</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Data</th>
+                <th>Autor</th>
+                <th>Quantidade de Itens</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${movPorTipo.venda
+                .map(
+                  (mov) => `
+              <tr>
+                <td>${mov.id}</td>
+                <td>${formatarData(mov.data_movimentacao)}</td>
+                <td>${mov.autor_nome || mov.autor}</td>
+                <td>${calcularQuantidadeItens(mov)}</td>
+                <td>Kz ${calcularTotalMovimentacao(mov).toFixed(2)}</td>
+              </tr>
+            `,
+                )
+                .join("")}
+              <tr class="subtotal">
+                <td colspan="4">Valor vendido:</td>
+                <td>Kz ${totalPorTipo.venda.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        `
+            : ""
+        }
+
+        ${
+          movPorTipo.perda.length > 0
+            ? `
+          <h2>⚠️ Movimentações de Perda</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Data</th>
+                <th>Autor</th>
+                <th>Quantidade de Itens</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${movPorTipo.perda
+                .map(
+                  (mov) => `
+              <tr>
+                <td>${mov.id}</td>
+                <td>${formatarData(mov.data_movimentacao)}</td>
+                <td>${mov.autor_nome || mov.autor}</td>
+                <td>${calcularQuantidadeItens(mov)}</td>
+                <td>Kz ${calcularTotalMovimentacao(mov).toFixed(2)}</td>
+              </tr>
+            `,
+                )
+                .join("")}
+              <tr class="subtotal">
+                <td colspan="4">Subtotal Perdas:</td>
+                <td>Kz ${totalPorTipo.perda.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        `
+            : ""
+        }
+      </body>
+    </html>
+  `;
+
+  const janelaImpressao = window.open("", "", "height=600,width=800");
+  if (janelaImpressao) {
+    janelaImpressao.document.write(conteudo);
+    janelaImpressao.document.close();
+    janelaImpressao.print();
   }
 };
 
@@ -384,6 +731,11 @@ onMounted(() => {
 .header h1 {
   margin: 0;
   font-size: 1.5rem;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 1rem;
 }
 
 .alert-error {
@@ -453,6 +805,24 @@ onMounted(() => {
   background: #dc2626;
 }
 
+.btn-view {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-view:hover {
+  background: #2563eb;
+}
+
+.btn-print {
+  background: #8b5cf6;
+  color: white;
+}
+
+.btn-print:hover {
+  background: #7c3aed;
+}
+
 .tabela {
   width: 100%;
   border-collapse: collapse;
@@ -476,10 +846,6 @@ onMounted(() => {
   border-bottom: 1px solid #e5e7eb;
 }
 
-.tabela tbody tr:hover {
-  background: #f9fafb;
-}
-
 .acoes {
   display: flex;
   gap: 0.5rem;
@@ -491,6 +857,21 @@ onMounted(() => {
   border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 600;
+}
+
+.badge.entrada {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge.venda {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge.perda {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .badge-entrada {
@@ -603,7 +984,7 @@ onMounted(() => {
 
 .formulario {
   padding: 1.5rem;
-  color:black;
+  color: black;
 }
 
 .form-group {

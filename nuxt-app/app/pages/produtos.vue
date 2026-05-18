@@ -13,7 +13,9 @@
       <thead>
         <tr>
           <th>Nome</th>
-          <th>Preço</th>
+          <th>Preço Compra</th>
+          <th>Preço Venda</th>
+          <th>Quantidade</th>
           <th>Categoria</th>
           <th>Ações</th>
         </tr>
@@ -21,7 +23,9 @@
       <tbody>
         <tr v-for="produto in produtos" :key="produto.id">
           <td>{{ produto.nome }}</td>
-          <td>{{ formatarPreco(produto.preco) }}</td>
+          <td>{{ formatarPreco(produto.preco_compra) }}</td>
+          <td>{{ formatarPreco(produto.preco_venda) }}</td>
+          <td>{{ produto.quantidade }}</td>
           <td>{{ produto.categoria.nome }}</td>
           <td class="acoes">
             <button @click="abrirModal(produto)" class="btn-small btn-edit">
@@ -70,9 +74,20 @@
           </div>
 
           <div class="form-group">
-            <label>Preço *</label>
+            <label>Preço de Compra *</label>
             <input
-              v-model="form.preco"
+              v-model="form.preco_compra"
+              type="number"
+              step="0.01"
+              required
+              placeholder="0.00"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Preço de Venda *</label>
+            <input
+              v-model="form.preco_venda"
               type="number"
               step="0.01"
               required
@@ -104,9 +119,10 @@ definePageMeta({
 interface Produto {
   id: number;
   nome: string;
-  preco: number;
+  preco_compra: number;
+  preco_venda: number;
+  quantidade: number;
   categoria: number;
-  categoria_nome?: string;
 }
 
 interface Categoria {
@@ -125,7 +141,8 @@ const erro = ref("");
 const form = ref({
   nome: "",
   categoria: "",
-  preco: "",
+  preco_compra: "",
+  preco_venda: "",
 });
 
 const formatarPreco = (preco: string | number) => {
@@ -169,14 +186,16 @@ const abrirModal = (produto: any = null) => {
     form.value = {
       nome: produto.nome,
       categoria: produto.categoria,
-      preco: produto.preco,
+      preco_compra: produto.preco_compra,
+      preco_venda: produto.preco_venda,
     };
   } else {
     produtoEditando.value = null;
     form.value = {
       nome: "",
       categoria: "",
-      preco: "",
+      preco_compra: "",
+      preco_venda: "",
     };
   }
   modalAberto.value = true;
@@ -194,7 +213,8 @@ const salvarProduto = async () => {
     const dados = {
       nome: form.value.nome,
       categoria_id: parseInt(form.value.categoria),
-      preco: parseFloat(form.value.preco),
+      preco_compra: parseFloat(form.value.preco_compra),
+      preco_venda: parseFloat(form.value.preco_venda),
     };
 
     if (produtoEditando.value) {

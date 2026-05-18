@@ -2,9 +2,9 @@ from urllib import request
 
 from django.shortcuts import render
 from rest_framework.viewsets import ModelViewSet
-from .models import Produto, Categoria, ItemMovimentacao, Movimentacao
-from .serializers import ProdutoSerializer, CategoriaSerializer, ItemMovimentacaoSerializer, MovimentacaoSerializer
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from .models import Produto, Categoria, Movimentacao
+from .serializers import ProdutoSerializer, CategoriaSerializer, MovimentacaoSerializer
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
@@ -61,13 +61,19 @@ class ProdutoViewSet(ModelViewSet):
             )
         return super().destroy(request, *args, **kwargs)
 
-class ItemMovimentacaoViewSet(ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    queryset = ItemMovimentacao.objects.all()
-    serializer_class = ItemMovimentacaoSerializer
 
 class MovimentacaoViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
-    queryset = Movimentacao.objects.all()
     serializer_class = MovimentacaoSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+
+        #if user.is_staff:
+        return Movimentacao.objects.all()
+
+        #return Movimentacao.objects.filter(autor=user)
+
+    def perform_create(self, serializer):
+        serializer.save(autor=self.request.user)
 
